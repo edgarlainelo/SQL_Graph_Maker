@@ -21,6 +21,9 @@ class App:
         self.selected_cols = {}
         self.selected_aggregations = {}
 
+        self.dict_of_canvases = {}
+        self.aggregations_cols_select_dict = {}
+
         self.root = tk.Tk()
         
 
@@ -202,37 +205,57 @@ class App:
         else:
             pass
 
+
     
-    def select_col(self, event):
+    def add_cols_func(self, event):
 
-        #Getting column names from sql table
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(f"SELECT c.name FROM pragma_table_info('{self.table_select.get()}') c;")
-        self.col_names = self.cursor.fetchall()
+        event.widget.grid(row = event.widget.grid_info().get('row') + 1, column = 1, padx = 10, pady = 10, sticky = 'w')
         
-        self.cursor.close()
-        self.conn.close()
 
-        self.col_names_list = [col[0] for col in self.col_names]
+        if len(self.aggregations_cols_select_dict) == 0:
+            
+            self.agg_functions_selection = ttk.Combobox(event.widget.master, width= 10)
+            self.agg_functions_selection['values'] = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX']
+            self.agg_functions_selection.grid(row = 1, column=1, pady = 10, sticky='w')
 
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(f"SELECT c.name FROM pragma_table_info('{self.table_select.get()}') c;")
+            self.col_names = self.cursor.fetchall()
+            
+            self.cursor.close()
+            self.conn.close()
 
-        self.agregation_func = ttk.Combobox(self.frame, width = 20)
-        self.agregation_func['values'] = ['None','SUM', 'COUNT', 'AVG', 'MIN', 'MAX']
+            
 
-        self.selected_cols = ttk.Combobox(self.frame, width = 20)
-        self.selected_cols['values'] = self.col_names_list
+            self.cols_selection = ttk.Combobox(event.widget.master, width = 10)
+            self.cols_selection['values'] = ['*'] + [columns[0] for columns in self.col_names]
+            self.cols_selection.grid(row = 1, column=2, pady = 10, sticky='w')
 
-        self.agregation_func.bind('<<ComboboxSelected>>', self.aggregation_selection)
-        self.selected_cols.bind('<<ComboboxSelected>>', self.cols_selection)
+            self.aggregations_cols_select_dict[event.widget.master] = [self.agg_functions_selection, self.cols_selection]
+        
+        else:
+            
 
-    def aggregation_selection(self, event):
-        pass
+            self.agg_functions_selection = ttk.Combobox(event.widget.master, width= 10)
+            self.agg_functions_selection['values'] = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX']
+            self.agg_functions_selection.grid(row = self.aggregations_cols_select_dict.get(event.widget.master)[0].grid_info().get('row') + 1, column=1, pady = 10, sticky='w')
 
-    def cols_selection(self, event):
-        pass
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(f"SELECT c.name FROM pragma_table_info('{self.table_select.get()}') c;")
+            self.col_names = self.cursor.fetchall()
+            
+            self.cursor.close()
+            self.conn.close()
 
+            
 
+            self.cols_selection = ttk.Combobox(event.widget.master, width = 10)
+            self.cols_selection['values'] = ['*'] + [columns[0] for columns in self.col_names]
+            self.cols_selection.grid(row = self.aggregations_cols_select_dict.get(event.widget.master)[1].grid_info().get('row') + 1, column=2, pady = 10, sticky='w')
+
+            self.aggregations_cols_select_dict[event.widget.master] = [self.agg_functions_selection, self.cols_selection]
 
 
     
@@ -242,13 +265,13 @@ class App:
             
 
             self.container = tk.Frame(self.frame)
-            self.container.grid(row = list(self.widgets_dict.keys())[-1].grid_info().get('row')+1, column=1, padx= event.widget.winfo_rootx()+150, pady= 10, sticky='nsew')
+            self.container.grid(row = 3, column=2, padx= 10, pady= 10, sticky='nsew')
             
             self.canvas = tk.Canvas(self.container)
             self.scrollbar = ttk.Scrollbar(self.container, orient='vertical', command = self.canvas.yview)
 
             self.canvas.grid(row = 1, column=1, sticky='nsew')
-            self.scrollbar.grid(row=1, column =1, sticky="ns")
+            self.scrollbar.grid(row=1, column =2, sticky="ns")
 
             self.scrollable_frame = tk.Frame(self.canvas)
             self.canvas.create_window((0,0), window=self.scrollable_frame, anchor='nw')
@@ -256,6 +279,12 @@ class App:
             self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
             self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+
+            self.add_cols_btn = tk.Button(self.scrollable_frame, text = 'Add Columns', font = ('Arial', 12))
+            self.add_cols_btn.bind('<Button-1>',self.add_cols_func)
+            self.add_cols_btn.grid(row = 1, column=1, sticky='w')
+
+            self.dict_of_canvases[self.scrollable_frame] = self.add_cols_btn
         
         else:
 
@@ -285,18 +314,15 @@ class App:
 
             self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
-            self.vars = []
+            
 
-            for i, col_name in enumerate(self.col_names):
-                self.var = tk.BooleanVar()
-                self.cb = tk.Checkbutton(self.scrollable_frame, text = col_name[0], variable=self.var)
-                self.cb.grid(row = i, column = 1, sticky= 'w')
-                self.ch_buttons.append(self.cb)
-                
-                
-                self.vars.append(self.var)
+            self.add_cols_btn = tk.Button(self.scrollable_frame, text = 'Add Columns', font = ('Arial', 12))
+            self.add_cols_btn.bind('<Button-1>',self.add_cols_func)
+            self.add_cols_btn.grid(row = 1, column=1, sticky='w')
 
-            self.widgets_dict[event.widget] = (event.widget.get(), self.canvas, self.scrollbar, self.scrollable_frame)
+            self.dict_of_canvases[self.scrollable_frame] = self.add_cols_btn
+
+            
             
 
 
