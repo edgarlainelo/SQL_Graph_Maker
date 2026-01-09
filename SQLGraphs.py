@@ -133,7 +133,7 @@ class App:
 
             self.groupBy_chosen(event)
 
-        elif event.widget.get(event) == 'HAVING':
+        elif event.widget.get() == 'HAVING':
 
             self.having_chosen(event)
 
@@ -429,7 +429,55 @@ class App:
         print('Having')
 
     def orderBy_chosen(self, event):
-        print('Order BY')
+        if len(self.widgets_dict) == 0:
+
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(f"SELECT c.name FROM pragma_table_info('{self.table_select.get()}') c;")
+            self.col_names = self.cursor.fetchall()
+            
+            self.cursor.close()
+            self.conn.close()
+
+            self.col_names_list = [col[0] for col in self.col_names]
+
+            self.orderBy_col_select = ttk.Combobox(self.frame,width = 10)
+            self.orderBy_col_select['values'] = self.col_names_list
+            self.orderBy_col_select.grid(row = 3, column = 2, padx=2, pady = 1, sticky='w')
+
+            self.asc_desc_select = ttk.Combobox(self.frame, width = 10)
+            self.asc_desc_select['values'] = ['DESC', 'ASC']
+            self.asc_desc_select.grid(row = 3, column = 3, padx=2, pady = 1, sticky='w')
+
+
+            self.widgets_dict[event.widget] = (event.widget.get(), self.orderBy_col_select, self.asc_desc_select)
+
+        else:
+
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(f"SELECT c.name FROM pragma_table_info('{self.table_select.get()}') c;")
+            self.col_names = self.cursor.fetchall()
+            
+            self.cursor.close()
+            self.conn.close()
+
+            self.col_names_list = [col[0] for col in self.col_names]
+
+            
+
+            self.orderBy_col_select = ttk.Combobox(self.frame,width = 10)
+            self.orderBy_col_select['values'] = self.col_names_list
+            self.orderBy_col_select.grid(row = list(self.widgets_dict.keys())[-1].grid_info().get('row')+1, column = 2, padx=2, pady = 1, sticky='w')
+
+            self.asc_desc_select = ttk.Combobox(self.frame, width = 10)
+            self.asc_desc_select['values'] = ['DESC', 'ASC']
+            self.asc_desc_select.grid(row = list(self.widgets_dict.keys())[-1].grid_info().get('row')+1, column = 3, padx=2, pady = 1, sticky='w')
+
+
+            self.widgets_dict[event.widget] = (event.widget.get(), self.orderBy_col_select, self.asc_desc_select)
+
+            
 
     def sum_chosen(self, event):
         print('Sum')
